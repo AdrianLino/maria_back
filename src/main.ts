@@ -4,17 +4,19 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true, // Required for Stripe webhook signature verification
+  });
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
-  new ValidationPipe({
-  whitelist: true,
-  forbidNonWhitelisted: true,
-  })
-);
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    })
+  );
 
-const config = new DocumentBuilder()
+  const config = new DocumentBuilder()
     .setTitle('Login maria JS')
     .setDescription('Este es el login de maria')
     .setVersion('1.0')

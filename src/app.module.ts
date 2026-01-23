@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config'; 
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
+import { StripeModule } from './stripe/stripe.module';
 
 
 @Module({
@@ -17,7 +18,8 @@ import { AuthModule } from './auth/auth.module';
       autoLoadEntities: true,
       synchronize: true,
     }),
-    AuthModule, 
+    AuthModule,
+    StripeModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

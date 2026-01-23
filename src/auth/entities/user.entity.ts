@@ -93,6 +93,40 @@ export class User {
     })
     updatedAt: Date;
 
+    @ApiProperty({
+        example: 'cus_1234567890',
+        description: 'ID del cliente en Stripe',
+        nullable: true,
+    })
+    @Column('text', {
+        name: 'stripe_customer_id',
+        nullable: true
+    })
+    stripeCustomerId: string | null;
+
+    @ApiProperty({
+        example: 'sub_1234567890',
+        description: 'ID de la suscripción activa en Stripe',
+        nullable: true,
+    })
+    @Column('text', {
+        name: 'stripe_subscription_id',
+        nullable: true
+    })
+    stripeSubscriptionId: string | null;
+
+    @ApiProperty({
+        example: 'active',
+        description: 'Estado de la suscripción del usuario',
+        enum: ['inactive', 'active', 'past_due', 'canceled'],
+        default: 'inactive',
+    })
+    @Column('text', {
+        name: 'subscription_status',
+        default: 'inactive'
+    })
+    subscriptionStatus: string;
+
     @BeforeInsert()
     checkFieldsBeforeInsert() {
         this.email = this.email.toLowerCase().trim();
