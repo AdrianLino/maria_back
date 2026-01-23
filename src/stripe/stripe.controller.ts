@@ -7,6 +7,8 @@ import {
     Headers,
     HttpStatus,
     UseGuards,
+    Query,
+    BadRequestException,
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -21,14 +23,35 @@ import { User } from '../auth/entities/user.entity';
 export class StripeController {
     constructor(private readonly stripeService: StripeService) { }
 
+    @Get('products')
+    @ApiOperation({ summary: 'Obtener planes de suscripción disponibles' })
+    async getProducts() {
+        return this.stripeService.getProducts();
+    }
+
+    @Post('portal')
+    @UseGuards(AuthGuard())
+    @ApiBearerAuth('access-token')
+    @ApiOperation({ summary: 'Obtener link al portal de clientes' })
+    async getPortalSession(@GetUser() user: User) {
+        const url = await this.stripeService.createCustomerPortalSession(user);
+        return { url };
+    }
+
     @Get('payment-link')
     @UseGuards(AuthGuard())
     @ApiBearerAuth('access-token')
     @ApiOperation({ summary: 'Obtener link de pago para suscripción' })
     @ApiResponse({ status: 200, description: 'URL de checkout de Stripe' })
     @ApiResponse({ status: 401, description: 'No autorizado' })
-    async getPaymentLink(@GetUser() user: User) {
-        const paymentUrl = await this.stripeService.createPaymentLink(user);
+    async getPaymentLink(
+        @GetUser() user: User,
+        @Query('priceId') priceId: string,
+    ) {
+        if (!priceId) {
+            throw new BadRequestException('priceId is required');
+        }
+        const paymentUrl = await this.stripeService.createPaymentLink(user, priceId);
         return {
             paymentUrl,
             message: 'Redirige al usuario a esta URL para completar el pago',

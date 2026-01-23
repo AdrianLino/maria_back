@@ -4,17 +4,20 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Stripe from 'stripe';
 import { User } from '../auth/entities/user.entity';
+import { WebhookLog } from './entities/webhook-log.entity';
 
 @Injectable()
 export class StripeService {
     private readonly stripe: Stripe;
     private readonly logger = new Logger('StripeService');
-    private readonly priceId = 'price_1SsUZoK9IDDOq1wQSiSiLv8o'; // Suscripción Premium 100 MXN/mes
+
 
     constructor(
         private readonly configService: ConfigService,
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
+        @InjectRepository(WebhookLog)
+        private readonly webhookLogRepository: Repository<WebhookLog>,
     ) {
         this.stripe = new Stripe(this.configService.get<string>('STRIPE_SECRET_KEY')!);
     }
@@ -44,9 +47,47 @@ export class StripeService {
     }
 
     /**
+     * Obtiene los productos y precios activos de Stripe
+     */
+    async getProducts() {
+        const products = await this.stripe.products.list({ active: true });
+        const prices = await this.stripe.prices.list({ active: true });
+
+        return products.data.map((product) => {
+            const productPrices = prices.data.filter((price) => price.product === product.id);
+            return {
+                id: product.id,
+                name: product.name,
+                description: product.description,
+                images: product.images,
+                prices: productPrices.map((price) => ({
+                    id: price.id,
+                    currency: price.currency,
+                    unit_amount: price.unit_amount,
+                    interval: price.recurring?.interval,
+                })),
+            };
+        });
+    }
+
+    /**
+     * Crea una sesión del portal de clientes
+     */
+    async createCustomerPortalSession(user: User): Promise<string> {
+        const customerId = await this.getOrCreateCustomer(user);
+
+        const session = await this.stripe.billingPortal.sessions.create({
+            customer: customerId,
+            return_url: `${this.configService.get<string>('HOST_API')}/stripe/return`, // Ajustar según rutas frontend
+        });
+
+        return session.url;
+    }
+
+    /**
      * Crea un link de pago para la suscripción
      */
-    async createPaymentLink(user: User): Promise<string> {
+    async createPaymentLink(user: User, priceId: string): Promise<string> {
         const customerId = await this.getOrCreateCustomer(user);
 
         const session = await this.stripe.checkout.sessions.create({
@@ -54,7 +95,7 @@ export class StripeService {
             mode: 'subscription',
             line_items: [
                 {
-                    price: this.priceId,
+                    price: priceId,
                     quantity: 1,
                 },
             ],
@@ -74,6 +115,14 @@ export class StripeService {
      */
     async handleWebhookEvent(event: Stripe.Event): Promise<void> {
         this.logger.log(`Processing webhook event: ${event.type}`);
+
+        // Guardar log del webhook
+        await this.webhookLogRepository.save({
+            stripeEventId: event.id,
+            type: event.type,
+            payload: event,
+            status: 'processed',
+        });
 
         switch (event.type) {
             case 'checkout.session.completed': {
