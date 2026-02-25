@@ -31,8 +31,9 @@ RUN npm install --only=production
 # Copia la aplicación ya construida desde la etapa 'builder'.
 COPY --from=builder /app/dist ./dist
 
-# Copia la carpeta de videos estáticos (necesaria para ServeStaticModule).
+# Copia las carpetas de videos estáticos (necesarias para ServeStaticModule).
 COPY --from=builder /app/videos ./videos
+COPY --from=builder /app/videos_pancho ./videos_pancho
 
 # Expone el puerto que tu aplicación NestJS usa (por defecto es 3000).
 EXPOSE 3000

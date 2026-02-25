@@ -10,10 +10,16 @@ import { StripeModule } from './stripe/stripe.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'videos'),
-      serveRoot: '/videos',
-    }),
+    ServeStaticModule.forRoot(
+      {
+        rootPath: join(__dirname, '..', 'videos'),
+        serveRoot: '/videos',
+      },
+      {
+        rootPath: join(__dirname, '..', 'videos_pancho'),
+        serveRoot: '/videos_pancho',
+      },
+    ),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST,
